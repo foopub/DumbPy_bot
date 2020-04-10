@@ -24,7 +24,7 @@ async def load(context: commands.Context, *, names: str) -> None:
     if names.lower() == 'all': names = all_cogs
     for name in names.split(' '):
         try:
-        client.load_extension(f'cogs.{name.lower()}')
+            client.load_extension(f'cogs.{name.lower()}')
             await context.send(f'Module {name.title()} loaded!')
         except:
             await context.send(f'Could not load {name.title()}!')
