@@ -33,8 +33,8 @@ class Reactions(commands.Cog):
                     file = await attachment.to_file()
                     bundle.append(file)
             await channel.send(\
-                f'Message by {reaction.message.author}:\n',
-                {reaction.message.content}, files=bundle)
+                f'Message by {reaction.message.author}:\n'
+                f'{reaction.message.content}', files=bundle)
             await reaction.message.delete()
 
 
