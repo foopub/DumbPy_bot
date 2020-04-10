@@ -1,7 +1,7 @@
 from discord.ext import commands
 import discord
 
-class Roles(commands.Cog):
+class Basic(commands.Cog):
     def __init__(self, client: commands.Bot) -> None:
         self.client = client
     
@@ -13,5 +13,5 @@ class Roles(commands.Cog):
         await context.send(f'Ping is {self.client.latency*1000} ms')
 
 def setup(client: commands.Bot) -> None:
-    client.add_cog(Roles(client))
+    client.add_cog(Basic(client))
     

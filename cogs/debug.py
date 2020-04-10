@@ -1,7 +1,7 @@
 from discord.ext import commands
 import discord
 
-class Roles(commands.Cog):
+class Debug(commands.Cog):
     def __init__(self, client: commands.Bot) -> None:
         self.client = client
     
@@ -22,5 +22,5 @@ class Roles(commands.Cog):
                 await context.send(x)
 
 def setup(client: commands.Bot) -> None:
-    client.add_cog(Roles(client))
+    client.add_cog(Debug(client))
     
