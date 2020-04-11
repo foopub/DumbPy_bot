@@ -1,10 +1,11 @@
 from discord.ext import commands
 import discord
-from cogs import checks 
+from cogs import checks as ch 
 import functools
-from typing import Callable
+from typing import Callable, List
+from cogs.sup import settings as st
 
-def give_role(
+def role_wrap(
     
         _funct=None,
         role_type: str=None, 
@@ -24,31 +25,32 @@ def give_role(
             self,
             context: commands.Context,
             role_name: str,
-            member: discord.Member=None,
+            members: commands.Greedy[discord.Member]=None,
             ) -> None:
-            if not member:      #make author target if none specified
-                member = context.author
-                if checks.self_check(member, perms, roles): 
-                    #can author do this to themselves?
-                    pass
-            elif checks.target_check(member, context.author, perms, roles): 
-                #can author do this to others?
-                pass
-            else:
-                await context.send("You're not allowed to do this >:(")
-                return None
-            
-            print('\nIside wrapper', self, context, role_name, member)
-            new_role, cleanup_rule = await role_function(
-                    self, context, role_name, member)
 
-            if cleanup:
-                for role in member.roles:
-                    if cleanup_rule(role):
-                        await member.remove_roles(role)
-                        if cleanup == 'hard' and not role.members:
-                            await role.delete(reason='Role replaced')
-            await member.add_roles(new_role)
+            if not members:      #make author target if none specified
+                members = context.author
+                if not ch.author(members, perms, roles):
+                    await context.send(
+                            "You're not allowed to do this to yourself")
+                    return None
+
+            for member in members:
+                if not ch.target(context.author, member, perms, roles):
+                    await context.send(
+                        "You're not allowed to do this to {member} >:(")
+                    continue
+                
+                new_role, cleanup_rule = await role_function(
+                        self, context, role_name, member)
+
+                if cleanup:
+                    for role in member.roles:
+                        if cleanup_rule(role):
+                            await member.remove_roles(role)
+                            if cleanup == 'hard' and not role.members:
+                                await role.delete(reason='Role replaced')
+                await member.add_roles(new_role)
             await context.send(message)
         return my_wrapper 
     if _funct is None:
@@ -62,20 +64,20 @@ class Roles(commands.Cog):
         self.client = client
 
     @commands.command(name='colour')
-    @give_role(cleanup='hard',role_type='colour',message='Swag granted!')
+    @role_wrap(cleanup='hard',role_type='colour',message='Swag granted!')
     async def colour(
             self,
             context: commands.Context, 
             colour_hex: str, 
-            member: discord.Member=None
+            member: commands.Greedy[discord.Member]=None
             ) -> (discord.Role, Callable):
         """
         Creates and gives colour role from hex, then cleans up. 
         Usage:
-        .colour 12345               #applies role to author
-        .colour 12345 @someone      #applies tole to someone
+        .colour 1234                #applies role to author
+        .colour 1234  @someone      #give role to someone else
+        .colour 1233  @alice @bob   #works for both alice and bob 
         """
-        print('\nInside colour', self, context, colour_hex, member)
         role_name = f'colour_{colour_hex}'
 
         try:
@@ -89,13 +91,13 @@ class Roles(commands.Cog):
         return colour_role, lambda x: str(x.name).split('_')[0]=='colour'
 
     @commands.command(name='mod')
-    @give_role(cleanup=None, role_type='mod', 
+    @role_wrap(cleanup=None, role_type='mod', 
             message='With great power comes great responsibility.')
     async def mod(
             self,
             context: commands.Context, 
             rank: str, 
-            member: discord.Member=None
+            member: commands.Greedy[discord.Member]=None
             ) -> discord.Role:
         """
         This command does nothing lol.
@@ -104,9 +106,24 @@ class Roles(commands.Cog):
 
     @commands.command(name='clean_roles')
     async def clean_roles(self, context: commands.Context) -> None:
+        """
+        Delete all redundant roles that aren't saved.
+        """
         for role in context.guild.roles:
-            if not role.members:
+            if not any([role.members, role.name in st.saved_roles]):
                 await role.delete(reason='Redundant role deleted')
+    
+    @commands.command(name='save_role', aliases=['save_roles'])
+    async def save_role(
+            self,
+            context: commands.Context, 
+            roles: commands.Greedy[discord.Role],
+            all_roles: str=None
+            ) -> None:
+        role_names = [i.name for i in roles]
+        if all_roles == 'all':
+            role_names = [i.name for i in context.guild.roles]
+        await context.send(f'Saving roles: {role_names[1:]}')
 
 def setup(client: commands.Bot) -> None:
     client.add_cog(Roles(client))
