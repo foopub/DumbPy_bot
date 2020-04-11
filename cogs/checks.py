@@ -12,9 +12,9 @@ def has_roles(author: discord.Member, roles: set) -> bool:
 def has_perms(author: discord.Member, perms) -> bool:
     pass
 
-def self_check(author: discord.Member, perms, roles) -> bool:
+def author(author: discord.Member, perms, roles) -> bool:
     return True
 
-def target_check(author: discord.Member, 
+def target(author: discord.Member, 
         target: discord.Member, perms, roles) -> bool:
     return True

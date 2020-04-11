@@ -1,23 +1,19 @@
 import discord
 from discord.ext import commands
 
-discord.Member.guild_permissions
-
-class Member(discord.Member):
-    def __init__(self):
-        pass
+class MemberCheck(discord.Member):
      
-    def has_roles(author: discord.Member, roles: set) -> bool:
+    def has_roles(self, roles: set) -> bool:
         role_set = set()
-        for role in author.roles:
+        for role in self.roles:
             role_set.add(role.name)
         return roles <= role_set
 
-    def has_perms(author: discord.Member, perms) -> bool:
+    def has_perms(self, context: commands.Context, perms: set) -> bool:
         pass
 
-    def self_check(self, perms, roles):
+    def self_check(self, perms: set, roles: set) -> bool:
         return True
 
-    def targer_check(self, target: discord.Member, perms, roles):
+    def targer_check(self, author: discord.Member, perms: set, roles: set) -> bool:
         return True
