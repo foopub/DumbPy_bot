@@ -1,49 +1,34 @@
-"""
-Settings
-
-Name: string, only required argument.
-Colour: hex code or string (only common names are defined)
-Position: int or string (name of role to be placed under)
-Hoist: bool, (show the role separately in member list)
-Mentionable:  bool, (this is a good way to annoy people)
-
-Permisions
-
-Some permissions are global (i.e. ban) while others are channel
-specific. The default value for all global permissions is False.
-Channel specific permissions can overwrite global permissions,
-and their default value is None, meaning unchanged.
-
-
- 1 create_instant_invite 00000001 T, V
- 2 kick_members          00000002 *,
- 3 ban_members           00000004 *,
- 4 administrator         00000008 *,
- 5 manage_channels       00000010 *, T, V
- 6 manage_guild          00000020 *,
- 7 add_reactions         00000040 T
- 8 view_audit_log        00000080
- 9 view_channel          00000400 T, V
-10 send_messages         00000800 T
-11 send_tts_messages     00001000 T
-12 manage_messages       00002000 *, T
-13 embed_links           00004000 T
-14 attach_files          00008000 T
-15 read_message_history  00010000 T
-16 mention_everyone      00020000 T
-17 use_external_emojis   00040000 T
-18 view_guild_insights   00080000
-19 connect               00100000 V
-20 speak                 00200000 V
-21 mute_members          00400000 V
-22 deafen_members        00800000 V
-23 move_members          01000000 V
-24 use_vad               02000000 V
-25 priority_speaker      00000100 V
-26 stream                00000200 V
-27 change_nickname       04000000
-28 manage_nicknames      08000000
-29 manage_roles          10000000 *, T, V
-30 manage_webhooks       20000000 *, T, V
-31 manage_emojis         40000000 *,
-"""
+perms = {
+0: [None, 0x00000000],
+1: ['create_instant_invite', 0x00000001],
+2: ['kick_members', 0x00000002],
+3: ['ban_members', 0x00000004],
+4: ['administrator', 0x00000008],
+5: ['manage_channels', 0x00000010],
+6: ['manage_guild', 0x00000020],
+7: ['add_reactions', 0x00000040],
+8: ['view_audit_log', 0x00000080],
+9: ['priority_speaker', 0x00000100],
+10: ['stream', 0x00000200],
+11: ['view_channel', 0x00000400],
+12: ['send_messages', 0x00000800],
+13: ['send_tts_messages', 0x00001000],
+14: ['manage_messages', 0x00002000],
+15: ['embed_links', 0x00004000],
+16: ['attach_files', 0x00008000],
+17: ['read_message_history', 0x00010000],
+18: ['mention_everyone', 0x00020000],
+19: ['use_external_emojis', 0x00040000],
+20: ['view_guild_insights', 0x00080000],
+21: ['connect', 0x00100000],
+22: ['speak', 0x00200000],
+23: ['mute_members', 0x00400000],
+24: ['deafen_members', 0x00800000],
+25: ['move_members', 0x01000000],
+26: ['use_vad', 0x02000000],
+27: ['change_nickname', 0x04000000],
+28: ['manage_nicknames', 0x08000000],
+29: ['manage_roles', 0x10000000],
+30: ['manage_webhooks', 0x20000000],
+31: ['manage_emojis', 0x40000000]
+}
