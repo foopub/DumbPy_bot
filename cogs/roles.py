@@ -1,9 +1,11 @@
 from discord.ext import commands
+import itertools as itt
 import discord
 from cogs import checks as ch 
 import functools
-from typing import Callable, List, Union
+from typing import Callable, List, Union, Optional
 from cogs.sup import settings as st
+from cogs.sup import role_settings as rs
 
 def role_wrap(
     
@@ -58,6 +60,29 @@ def role_wrap(
     else:
         return funct_wrapper(_funct)
 
+class Str_Hex(commands.Converter):
+    async def convert(self, context, name: str):
+        """
+        Converter for hex OR octal values.
+        """
+        if len(name) > 3:
+            try:
+                return int(name, base=16)
+            except ValueError:
+                return int(name, base=8)
+            except:
+                return None
+        else:
+            return None
+
+def sum_perms(extra: List[int],start=0): 
+    for i in extra:
+        value = rs.perms[abs(i)][1]*(i/abs(i))
+        if -value < start: #don't make it negative
+            start+=value
+    print(start)
+    return int(start)
+
 class Roles(commands.Cog):
 
     def __init__(self, client: commands.Bot) -> None:
@@ -110,9 +135,13 @@ class Roles(commands.Cog):
         Delete all redundant roles which aren't saved.
         Roles can be saved using the save_role command.
         """
+        roles_deleted = ' '
         for role in context.guild.roles:
             if not any([role.members, role.name in st.saved_roles]):
+                print(f'{role.name}')
+                roles_deleted += f"{role.name}, "
                 await role.delete(reason='Redundant role deleted')
+        await context.send(f'Deleted roles:{roles_deleted[:-2]}.')
     
     @commands.command(name='save_role', aliases=['save_roles'])
     async def save_role(
@@ -134,19 +163,12 @@ class Roles(commands.Cog):
             role_names = [i.name for i in context.guild.roles]
         await context.send(f'Saving roles: {role_names[1:]}')
 
-    @commands.command(name='make_help')
-    async def make_help(
+    @commands.command(name='role_help')
+    async def role_help(
             self,
             context: commands.Context, 
-            role_name: str,
-            permissions: commands.Greedy[int]=None,
-            colour: str='000',
-            position: Union[int, str]=0,
-            hoist: bool=False,
-            mention: bool=False,
-            override_permissions: commands.Greedy[int]=None,
-            override_text_ch: commands.Greedy[discord.TextChannel]=None,
-            *vc_categories: str
+            args: Optional[str],
+            *other
             ) -> None:
         """
         Global arguments 
@@ -165,84 +187,149 @@ class Roles(commands.Cog):
         their default value is None, meaning unchanged.
 
         Now to get a list of all permissions use:
-        .make_role list_permissions
+        .role_help list
         or to see some examples of common usage:
-        .make_role show_examples
+        .role_help examples
         """
-        if role_name == 'list_permissions':
+        if 'list' in args:
             await context.send(
-        """```
-        T and V indicate channel specific options, * means 2FA may be
-        required. Add permissions by listing leftmost numbers, or giving
-        the total hexadecimal sum.
-
-         1 create_instant_invite 00000001 T, V
-         2 kick_members          00000002 *,
-         3 ban_members           00000004 *,
-         4 administrator         00000008 *,
-         5 manage_channels       00000010 *, T, V
-         6 manage_guild          00000020 *,
-         7 add_reactions         00000040 T
-         8 view_audit_log        00000080
-         9 view_channel          00000400 T, V
-        10 send_messages         00000800 T
-        11 send_tts_messages     00001000 T
-        12 manage_messages       00002000 *, T
-        13 embed_links           00004000 T
-        14 attach_files          00008000 T
-        15 read_message_history  00010000 T
-        16 mention_everyone      00020000 T
-        17 use_external_emojis   00040000 T
-        18 view_guild_insights   00080000
-        19 connect               00100000 V
-        20 speak                 00200000 V
-        21 mute_members          00400000 V
-        22 deafen_members        00800000 V
-        23 move_members          01000000 V
-        24 use_vad               02000000 V
-        25 priority_speaker      00000100 V
-        26 stream                00000200 V
-        27 change_nickname       04000000
-        28 manage_nicknames      08000000
-        29 manage_roles          10000000 *, T, V
-        30 manage_webhooks       20000000 *, T, V
-        31 manage_emojis         40000000 *,
+        "```"
+        "T and V indicate channel specific options, * means 2FA may be "
+        "required. You can add or remove permissions by listing leftmost"
+        " numbers with a minus or no sign accordingly. Alternatively, "
+        "give the total hexadecimal or octadecimal sum. To get the octa"
+        "decimal table use:\n.role_help oct\n"
+        """
+         1 create_instant_invite 0x00000001 T, V
+         2 kick_members          0x00000002 *,
+         3 ban_members           0x00000004 *,
+         4 administrator         0x00000008 *,
+         5 manage_channels       0x00000010 *, T, V
+         6 manage_guild          0x00000020 *,
+         7 add_reactions         0x00000040 T
+         8 view_audit_log        0x00000080
+         9 priority_speaker      0x00000100 V
+        10 stream                0x00000200 V
+        11 view_channel          0x00000400 T, V
+        12 send_messages         0x00000800 T
+        13 send_tts_messages     0x00001000 T
+        14 manage_messages       0x00002000 *, T
+        15 embed_links           0x00004000 T
+        16 attach_files          0x00008000 T
+        17 read_message_history  0x00010000 T
+        18 mention_everyone      0x00020000 T
+        19 use_external_emojis   0x00040000 T
+        20 view_guild_insights   0x00080000
+        21 connect               0x00100000 V
+        22 speak                 0x00200000 V
+        23 mute_members          0x00400000 V
+        24 deafen_members        0x00800000 V
+        25 move_members          0x01000000 V
+        26 use_vad               0x02000000 V
+        27 change_nickname       0x04000000
+        28 manage_nicknames      0x08000000
+        29 manage_roles          0x10000000 *, T, V
+        30 manage_webhooks       0x20000000 *, T, V
+        31 manage_emojis         0x40000000 *,
         ```""") 
             await context.send(
         """```
-        You can give one set of permission overrides for all channels
+        You can give one set of permission overwrites for all channels
         and categories following. You can also give multiple sets of 
         permissions where the first N sets will apply to the first N
         channels and cattegories, after which the last permission set 
         will be applied to all the remaining.
-
-        Different permission sets should each be separated by a 0 if
-        naming the permissions by number. If using hexadecimal, a space
-        will suffice.
+        
+        Different overwrite permission sets should each be separated by
+        a 0 if naming the permissions by number. 
+        If using hexadecimal, you're good.
         ```"""
         )
-        elif role_name == 'show_examples':
+        elif args == 'examples':
             await context.send('examples here')
+        elif args == 'oct':
+            table = '```\n'
+            for i in rs.perms.values():
+                table += f'{i[1]:#0{13}o} - {i[0]}\n'
+            await context.send(f'{table}' "\n```")
         pass
     
-    @commands.command(name='make_role')
-    async def make_role(
+    @commands.command(name='role_tool')
+    async def role_tool(
             self,
             context: commands.Context, 
-            role_name: str,
-            permissions: commands.Greedy[int]=None,
-            colour: str='000',
-            position: Union[int, str]=0,
-            hoist: bool=False,
+            role: Optional[discord.Role]=None,
+            role_name: Optional[str]='new_role',
+            permission_hex_oct: Optional[Str_Hex]=0,
+            permissions: commands.Greedy[int]=[],
+            separate: bool=False,
             mention: bool=False,
-            override_permissions: commands.Greedy[int]=None,
-            override_text_ch: commands.Greedy[discord.TextChannel]=None,
-            *vc_categories: str
+            role_colour: Union[Str_Hex,str]=0,
+            position: Union[discord.Role, int, str]=0,
+            overwrite_ch: commands.Greedy[discord.TextChannel]=None,
+            overwrite_vc: commands.Greedy[discord.VoiceChannel]=None,
+            overwrite_cat: commands.Greedy[discord.CategoryChannel]=None,
+            overwrite_permissions: commands.Greedy[int]=None,
+            *other: str
             ) -> None:
-
         """
         This is an advanced function, use make_help for info.
         """
+        print(self,
+		'context: ', context, '\n'
+		'role: ', role, '\n'
+		'role_name: ', role_name, '\n'
+		'permission_hex_oct: ', permission_hex_oct, '\n'
+		'permissions: ', permissions, '\n'
+                'separate: ', separate, '\n'
+		'role_colour: ', role_colour, '\n'
+		'position: ', position, '\n'
+		'mention: ', mention, '\n'
+		'overwrite_permissions: ', overwrite_permissions, '\n'
+                'overwrite_ch: ', overwrite_ch, '\n'
+                'overwrite_vc: ', overwrite_vc, '\n'
+                'overwrite_cat: ', overwrite_cat, '\n'
+		'other: ', other, '\n'
+                )
+
+        if role and role_name:
+            await context.send(f'Renaming {role} to {role_name}.')
+        elif role_name and not role:
+            try:
+                int(role_name,16)
+                await context.send(f'Interpreting {role_name} as role'
+                    'name. Weird thing to name a role bro.')
+            except:
+                pass 
+            role = await context.guild.create_role(name=role_name)
+            await context.send(f'Creating role {role_name}')
+        elif not role:
+            await context.send('You need at least a role or a name')
+            return None
+
+        perms = sum_perms(permissions,permission_hex_oct)
+       
+        try:
+            role_colour = discord.Colour(role_colour)
+        except:
+            await context.send(
+                    f'Colour {role_colour} not found')
+
+        await role.edit(name=role_name,#hoist=separate,
+                mentionable=mention, colour=role_colour,
+                permissions=discord.Permissions(perms)
+                )
+
+        perm_groups = []
+        for i in ','.join(overwrite_permissions).split('0'):
+            perm_groups.append(i.split(','))
+
+        pairs = itt.zip_longest(overwrite_ch, perm_groups,
+                fillvalue=perm_groups[-1])
+
+        for i in pairs:
+            perms = sum_perms(i[1],perms)
+            i[0].edit(overwrites={role: discord.PermissionOverwrite(perms)})
 
 
 def setup(client: commands.Bot) -> None:
