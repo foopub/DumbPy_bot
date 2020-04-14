@@ -1,4 +1,5 @@
 from discord.ext import commands
+from commands import BadArgument
 import itertools as itt
 import discord
 from cogs import checks as ch 
@@ -6,9 +7,11 @@ import functools
 from typing import Callable, List, Union, Optional
 from cogs.sup import settings as st
 from cogs.sup import role_settings as rs
+from math import copysign
 
-def role_wrap(
-    
+total_perms = sum(rs.perms[i][1] for i in rs.perms)
+
+def role_wrap(    
         _funct=None,
         role_type: str=None, 
         cleanup: str=None,      #'hard' deletes role globally
@@ -60,27 +63,48 @@ def role_wrap(
     else:
         return funct_wrapper(_funct)
 
-class Str_Hex(commands.Converter):
+class Hex_Oct_Bin(commands.Converter):
+    """
+    Useful converter for alternative number formats.
+    """
     async def convert(self, context, name: str):
-        """
-        Converter for hex OR octal values.
-        """
-        if len(name) > 3:
-            try:
-                return int(name, base=16)
-            except ValueError:
-                return int(name, base=8)
-            except:
-                return None
-        else:
-            return None
+        d = {'x': 16,'o': 8,'b': 2}
+        try:
+            return int(name, base=d[name[1]])
+        except:
+            raise BadArgument
+
+class Valid_Str(commands.Converter):
+    """
+    Potentially useful, avoid interpreting hex/oct/bin int as str. 
+    """
+    async def convert(self, context, name: str):
+        try:
+            Hex_Oct_Bin.convert(None,None,name)
+            raise BadArgument
+        except KeyError or TypeError:
+            return name
+
+class Permission(commands.Converter):
+    """
+    Check if valid permission hex/oct/bin/int value.
+    """
+    async def convert(self, context, name: str):
+        try:
+            value = Hex_Oct_Bin.convert(None,None,name)
+            if value < total_perms:
+                return value
+            raise
+        except:
+            return copysign(rs.perms[name][1],int(name))
+        except:
+            raise BadArgument
 
 def sum_perms(extra: List[int],start=0): 
     for i in extra:
-        value = rs.perms[abs(i)][1]*(i/abs(i))
-        if -value < start: #don't make it negative
+        value = copysign(rs.perms[abs(i)][1],i)
+        if -value < start: #always allow positive, but check negatives
             start+=value
-    print(start)
     return int(start)
 
 class Roles(commands.Cog):
@@ -93,7 +117,7 @@ class Roles(commands.Cog):
     async def colour(
             self,
             context: commands.Context, 
-            colour_hex: str, 
+            colour: discord.Colour, 
             members: commands.Greedy[discord.Member]=None
             ) -> (discord.Role, Callable):
         """
@@ -102,16 +126,17 @@ class Roles(commands.Cog):
         .colour 1234                #applies role to author
         .colour 1234  @someone      #give role to someone else
         .colour 1233  @alice @bob   #works for both alice and bob 
+        .colour blue                #discord default colours 
         """
-        role_name = f'colour_{colour_hex}'
+        role_name = f'colour_{colour}'
 
         try:
             colour_role = await context.guild.create_role(
                     name=role_name, 
-                    colour=discord.Colour(int(colour_hex, base=16))
+                    colour=colour
                     )
         except ValueError:
-            await context.send(f"{colour_hex} isn't a valid hex, silly!")
+            await context.send(f"{colour} isn't a valid hex, silly!")
 
         return colour_role, lambda x: str(x.name).split('_')[0]=='colour'
 
@@ -195,8 +220,8 @@ class Roles(commands.Cog):
             await context.send(
         "```"
         "T and V indicate channel specific options, * means 2FA may be "
-        "required. You can add or remove permissions by listing leftmost"
-        " numbers with a minus or no sign accordingly. Alternatively, "
+        "required. You can add or remove permissions by listing leftmost "
+        "numbers (with a minus sign to revoke if possible). Alternatively, "
         "give the total hexadecimal or octadecimal sum. To get the octa"
         "decimal table use:\n.role_help oct\n"
         """
@@ -259,13 +284,12 @@ class Roles(commands.Cog):
             self,
             context: commands.Context, 
             role: Optional[discord.Role]=None,
-            role_name: Optional[str]='new_role',
-            permission_hex_oct: Optional[Str_Hex]=0,
-            permissions: commands.Greedy[int]=[],
+            role_name: Optional[Valid_Str]='new_role',
+            permissions: commands.Greedy[Permission]=[],
             separate: bool=False,
             mention: bool=False,
-            role_colour: Union[Str_Hex,str]=0,
-            position: Union[discord.Role, int, str]=0,
+            role_colour: Optional[discord.Colour]=0,
+            position: Union[discord.Role, int]=0,
             overwrite_ch: commands.Greedy[discord.TextChannel]=None,
             overwrite_vc: commands.Greedy[discord.VoiceChannel]=None,
             overwrite_cat: commands.Greedy[discord.CategoryChannel]=None,
@@ -291,14 +315,14 @@ class Roles(commands.Cog):
                 'overwrite_cat: ', overwrite_cat, '\n'
 		'other: ', other, '\n'
                 )
-
+        message = ''
         if role and role_name:
-            await context.send(f'Renaming {role} to {role_name}.')
+            message += f'Renaming {role} to {role_name}. '
         elif role_name and not role:
             try:
                 int(role_name,16)
-                await context.send(f'Interpreting {role_name} as role'
-                    'name. Weird thing to name a role bro.')
+                message += (f'Interpreting {role_name} as role'
+                        'name. Weird thing to name a role bro.')
             except:
                 pass 
             role = await context.guild.create_role(name=role_name)
@@ -331,6 +355,9 @@ class Roles(commands.Cog):
             perms = sum_perms(i[1],perms)
             i[0].edit(overwrites={role: discord.PermissionOverwrite(perms)})
 
+    @commands.command(name='role')
+    async def role(self, context: discord.Context, *args):
+        pass
 
 def setup(client: commands.Bot) -> None:
     client.add_cog(Roles(client))
