@@ -1,5 +1,5 @@
 from discord.ext import commands
-from commands import BadArgument
+from discord.ext.commands import BadArgument
 import itertools as itt
 import discord
 from cogs import checks as ch 
@@ -63,52 +63,98 @@ def role_wrap(
     else:
         return funct_wrapper(_funct)
 
+async def hexoctbin(name: str):
+    d = {'x': 16,'o': 8,'b': 2}
+    return int(name, base=d[name[1]])
+
 class Hex_Oct_Bin(commands.Converter):
     """
     Useful converter for alternative number formats.
     """
-    async def convert(self, context, name: str):
-        d = {'x': 16,'o': 8,'b': 2}
+    async def convert(self, context: commands.Context, name: str):
         try:
-            return int(name, base=d[name[1]])
-        except:
+            return await hexoctbin(name)
+        except KeyError or TypeError:
             raise BadArgument
 
 class Valid_Str(commands.Converter):
     """
     Potentially useful, avoid interpreting hex/oct/bin int as str. 
     """
-    async def convert(self, context, name: str):
+    async def convert(self, context: commands.Context, name: str):
         try:
-            Hex_Oct_Bin.convert(None,None,name)
-            raise BadArgument
-        except KeyError or TypeError:
+            try:
+                await hexoctbin(name)
+                raise BadArgument
+            except KeyError or TypeError:
+                int(name)
+                raise BadArgument
+        except ValueError:
             return name
 
 class Permission(commands.Converter):
     """
     Check if valid permission hex/oct/bin/int value.
     """
-    async def convert(self, context, name: str):
+    async def convert(self, context: commands.Context, name: str) -> dict:
         try:
-            value = Hex_Oct_Bin.convert(None,None,name)
-            if value < total_perms:
-                return value
-            raise
-        except:
-            return copysign(rs.perms[name][1],int(name))
+            try:
+                value = await hexoctbin(name)
+                if value < total_perms:
+                    return dict(iter(discord.Permissions(value)))
+                else:
+                    raise ValueError
+            except:
+                key = abs(int(name))
+                return {f'{rs.perms[key][2]}': int(name)>0}
         except:
             raise BadArgument
 
-def sum_perms(extra: List[int],start=0): 
+class Position(commands.Converter):
+    async def convert(self, context: commands.Context, name:str):
+        try:
+            number = int(name)
+            if number < len(context.guild.roles):
+                return number
+            else:
+                print('Position {name} out of range')
+                raise ValueError 
+        except ValueError:
+            role = await discord.utils.get(context.guild.roles, name=name)
+            if role:
+                return role.positive-1
+            else:
+                print(f'Role {name} not found')
+                raise BadArgument
+
+async def chop_list(mylist: list, at: int):
+    bundle = []
+    for _ in range(mylist.count(at)):
+        bundle.append(mylist[:mylist.index(at)])
+        del mylist[:mylist.index(at)]
+    return bundle
+    
+async def sum_perms(extra: List[dict],starting: dict={}) -> dict:
+    print('Starting initial: ', starting,type(starting))
     for i in extra:
-        value = copysign(rs.perms[abs(i)][1],i)
-        if -value < start: #always allow positive, but check negatives
-            start+=value
-    return int(start)
+        print('\ni inside loop: ',i,type(i),'\n')
+        starting.update(**dict(i))
+    print('Starting type: ',starting,type(starting))
+    return starting
+
+
+def perm_get(value: int):
+    """
+    Get permissions. Similar to list(iter(discord.Permissions(value))).
+    """
+    perm_list = []
+    for i in reversed(rs.perms.values()):
+        if i[1]<value:
+            perm_list.append(i[0])
+            value -= i[1]
+    return perm_list[:-1]
 
 class Roles(commands.Cog):
-
     def __init__(self, client: commands.Bot) -> None:
         self.client = client
 
@@ -258,17 +304,19 @@ class Roles(commands.Cog):
         31 manage_emojis         0x40000000 *,
         ```""") 
             await context.send(
-        """```
-        You can give one set of permission overwrites for all channels
-        and categories following. You can also give multiple sets of 
-        permissions where the first N sets will apply to the first N
-        channels and cattegories, after which the last permission set 
-        will be applied to all the remaining.
-        
-        Different overwrite permission sets should each be separated by
-        a 0 if naming the permissions by number. 
-        If using hexadecimal, you're good.
-        ```"""
+        "```"
+        "You can give one set of perm overwrites for all channels "
+        "and categories."
+        "\n"
+        "You can also give multiple sets of perms, each separated "
+        "by a zero 0 where the first N sets will apply to the first "
+        "N channels and cattegories (in the order listed). "
+        "The last perm set will be applied to all remaining channels/"
+        "categories, if any."
+        "\n"
+        "Note that perm overwrites are applied on top of the global "
+        "permissions, instead of resetting them to none."
+        "```"
         )
         elif args == 'examples':
             await context.send('examples here')
@@ -279,86 +327,105 @@ class Roles(commands.Cog):
             await context.send(f'{table}' "\n```")
         pass
     
-    @commands.command(name='role_tool')
-    async def role_tool(
+    @commands.command(name='role')
+    async def role(
             self,
             context: commands.Context, 
             role: Optional[discord.Role]=None,
-            role_name: Optional[Valid_Str]='new_role',
+            name: Optional[Valid_Str]=None,
             permissions: commands.Greedy[Permission]=[],
-            separate: bool=False,
-            mention: bool=False,
-            role_colour: Optional[discord.Colour]=0,
-            position: Union[discord.Role, int]=0,
-            overwrite_ch: commands.Greedy[discord.TextChannel]=None,
-            overwrite_vc: commands.Greedy[discord.VoiceChannel]=None,
-            overwrite_cat: commands.Greedy[discord.CategoryChannel]=None,
-            overwrite_permissions: commands.Greedy[int]=None,
+            hoist: Optional[bool]=None,
+            mentionable: Optional[bool]=None,
+            colour: Optional[discord.Colour]=None,
+            position: Optional[Position]=None,
+            overwrite_ch: commands.Greedy[discord.TextChannel]=[],
+            overwrite_vc: commands.Greedy[discord.VoiceChannel]=[],
+            overwrite_cat: commands.Greedy[discord.CategoryChannel]=[],
+            overwrite_perms: commands.Greedy[Permission]=[],
             *other: str
             ) -> None:
         """
         This is an advanced function, use make_help for info.
+        Arguments are positional so if
         """
+        raw = {'name': name,'hoist': hoist,
+                'mentionable': mentionable,'colour': colour,
+                'position': position}
+
+        parameters = dict(itt.compress(
+                raw.items(),[i!=None for i in raw.values()]))
+
         print(self,
 		'context: ', context, '\n'
 		'role: ', role, '\n'
-		'role_name: ', role_name, '\n'
-		'permission_hex_oct: ', permission_hex_oct, '\n'
+		'name: ', name, '\n'
 		'permissions: ', permissions, '\n'
-                'separate: ', separate, '\n'
-		'role_colour: ', role_colour, '\n'
+                'hoist: ', hoist, '\n'
+		'mentionable: ', mentionable, '\n'
+		'colour: ', colour, '\n'
 		'position: ', position, '\n'
-		'mention: ', mention, '\n'
-		'overwrite_permissions: ', overwrite_permissions, '\n'
                 'overwrite_ch: ', overwrite_ch, '\n'
                 'overwrite_vc: ', overwrite_vc, '\n'
                 'overwrite_cat: ', overwrite_cat, '\n'
+		'overwrite_perms: ', overwrite_perms, '\n'
 		'other: ', other, '\n'
                 )
-        message = ''
-        if role and role_name:
-            message += f'Renaming {role} to {role_name}. '
-        elif role_name and not role:
-            try:
-                int(role_name,16)
-                message += (f'Interpreting {role_name} as role'
-                        'name. Weird thing to name a role bro.')
-            except:
-                pass 
-            role = await context.guild.create_role(name=role_name)
-            await context.send(f'Creating role {role_name}')
-        elif not role:
-            await context.send('You need at least a role or a name')
+
+        if role:
+            await context.send(f'Updating role {role}.')
+            permissions = await sum_perms(permissions,
+                    dict(iter(role.permissions)))
+            await role.edit(**parameters,
+                    permissions=discord.Permissions(**permissions))
+        elif name:
+            permissions = await sum_perms(permissions)
+            role = await context.guild.create_role(**parameters,
+                permissions=discord.Permissions(**permissions))
+            await context.send(f'Created role {name}.')
+        else:
+            await context.send('You need to provide a name!')
             return None
 
-        perms = sum_perms(permissions,permission_hex_oct)
-       
-        try:
-            role_colour = discord.Colour(role_colour)
-        except:
-            await context.send(
-                    f'Colour {role_colour} not found')
 
-        await role.edit(name=role_name,#hoist=separate,
-                mentionable=mention, colour=role_colour,
-                permissions=discord.Permissions(perms)
-                )
 
-        perm_groups = []
-        for i in ','.join(overwrite_permissions).split('0'):
-            perm_groups.append(i.split(','))
+        perm_list = itt.compress(permissions.keys(),permissions.values())
 
-        pairs = itt.zip_longest(overwrite_ch, perm_groups,
-                fillvalue=perm_groups[-1])
+        message = [
+                'Context:           ', str(context), '\n'
+		'Name:              ', str(name), '\n'
+                'Created at:        ', str(role.created_at), '\n'
+                'Permissions list:  ', '\n',
+                ', '.join(perm_list), '\n',
+                'Shown separately:  ', str(hoist), '\n'
+		'Mentionable:       ', str(mentionable), '\n'
+		'Colour value:      ', str(colour), '\n'
+		'Position:          ', str(position), '\n'
+    		'Other:             ', str(other), '\n'
+                ]
 
-        for i in pairs:
-            perms = sum_perms(i[1],perms)
-            i[0].edit(overwrites={role: discord.PermissionOverwrite(perms)})
+        if overwrite_perms:
+            all_ch = itt.chain(overwrite_ch,overwrite_vc,overwrite_cat)
+            perm_groups = chop_list(overwrite_perms, 0)
 
+            pairs = itt.zip_longest(all_ch, perm_groups,
+                    fillvalue=perm_groups[-1])
+
+
+            for i in pairs:
+                message.append(f'Overwrite perms for {i[0]}:\n', i[1], '\n')
+                perms = sum_perms(i[1],perms)
+                overwrites = discord.PermissionOverwrite(
+                        dict(iter(discord.Permissions(perms))))
+                await i[0].edit(overwrites={role: overwrites}) 
+
+        messagestr = "```\n" + ''.join(message) + "\n```"
+        await context.send(messagestr)
+
+    """
     @commands.command(name='role')
-    async def role(self, context: discord.Context, *args):
+    async def role(self, context: commands.Context, *args):
         pass
-
+    """
 def setup(client: commands.Bot) -> None:
     client.add_cog(Roles(client))
     
