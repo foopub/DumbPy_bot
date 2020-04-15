@@ -138,7 +138,7 @@ async def sum_perms(extra: List[dict],starting: dict={}) -> dict:
     print('Starting initial: ', starting,type(starting))
     for i in extra:
         print('\ni inside loop: ',i,type(i),'\n')
-        starting.update(**dict(i))
+        starting.update(i)
     print('Starting type: ',starting,type(starting))
     return starting
 
@@ -405,17 +405,18 @@ class Roles(commands.Cog):
 
         if overwrite_perms:
             all_ch = itt.chain(overwrite_ch,overwrite_vc,overwrite_cat)
-            perm_groups = chop_list(overwrite_perms, 0)
+            perm_groups = [overwrite_perms]#await chop_list(overwrite_perms, 0)
 
             pairs = itt.zip_longest(all_ch, perm_groups,
                     fillvalue=perm_groups[-1])
 
-
             for i in pairs:
-                message.append(f'Overwrite perms for {i[0]}:\n', i[1], '\n')
-                perms = sum_perms(i[1],perms)
+                print(f'I is {i}')
+                message.extend(
+                        [f'Overwrite perms for {i[0]}:\n', f'{i[1]}', '\n'])
+                perms = await sum_perms(i[1],permissions)
                 overwrites = discord.PermissionOverwrite(
-                        dict(iter(discord.Permissions(perms))))
+                    **perms)
                 await i[0].edit(overwrites={role: overwrites}) 
 
         messagestr = "```\n" + ''.join(message) + "\n```"
