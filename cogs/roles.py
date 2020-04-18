@@ -2,7 +2,6 @@ from discord.ext import commands
 from discord.ext.commands import BadArgument
 import itertools as itt
 import discord
-from cogs import checks as ch 
 import functools
 from typing import Callable, List, Union, Optional
 from cogs.sup import settings as st
@@ -87,8 +86,8 @@ class Valid_Str(commands.Converter):
                 await hexoctbin(name)
                 raise BadArgument
             except KeyError or TypeError:
-                int(name)
-                raise BadArgument
+                if name.isnumeric() or name[2:-1].isnumeric():
+                    raise BadArgument #exclude discord IDs also 
         except ValueError:
             return name
 
@@ -127,7 +126,7 @@ class Position(commands.Converter):
                 print(f'Role {name} not found')
                 raise BadArgument
 
-async def chop_list(mylist: list, at: int):
+async def chop_list(mylist: list, at: int) -> List[list]:
     bundle = []
     for _ in range(mylist.count(at)):
         bundle.append(mylist[:mylist.index(at)])
@@ -143,7 +142,7 @@ async def sum_perms(extra: List[dict],starting: dict={}) -> dict:
     return starting
 
 
-def perm_get(value: int):
+def perm_get(value: int) -> list:
     """
     Get permissions. Similar to list(iter(discord.Permissions(value))).
     """
@@ -328,6 +327,7 @@ class Roles(commands.Cog):
         pass
     
     @commands.command(name='role')
+    @commands.has_guild_permissions(manage_roles=True)
     async def role(
             self,
             context: commands.Context, 
@@ -348,13 +348,6 @@ class Roles(commands.Cog):
         This is an advanced function, use make_help for info.
         Arguments are positional so if
         """
-        raw = {'name': name,'hoist': hoist,
-                'mentionable': mentionable,'colour': colour,
-                'position': position}
-
-        parameters = dict(itt.compress(
-                raw.items(),[i!=None for i in raw.values()]))
-
         print(self,
 		'context: ', context, '\n'
 		'role: ', role, '\n'
@@ -371,6 +364,13 @@ class Roles(commands.Cog):
 		'other: ', other, '\n'
                 )
 
+        raw = {'name': name,'hoist': hoist,
+                'mentionable': mentionable,'colour': colour,
+                'position': position}
+
+        parameters = dict(itt.compress(
+                raw.items(),[i!=None for i in raw.values()]))
+
         if role:
             await context.send(f'Updating role {role}.')
             permissions = await sum_perms(permissions,
@@ -385,8 +385,6 @@ class Roles(commands.Cog):
         else:
             await context.send('You need to provide a name!')
             return None
-
-
 
         perm_list = itt.compress(permissions.keys(),permissions.values())
 
