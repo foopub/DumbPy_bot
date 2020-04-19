@@ -2,8 +2,6 @@ from discord.ext import commands
 import discord
 from typing import Optional
 
-genurl = 'https://discordapp.com/api/webhooks/701483990099689619/PwQesYMxz1owqmcQ5U_wuFI30UjwG5rCzw5UnFcuQC2SIqr1_Oia7emef5Ii2EUYaKI1' 
-
 async def webhooksay(message: discord.Message, 
         channel: discord.TextChannel,
         content: Optional[str]=None) -> None:
