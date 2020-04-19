@@ -6,6 +6,7 @@ import functools
 from typing import Callable, List, Union, Optional
 from cogs.sup import settings as st
 from cogs.sup import role_settings as rs
+import checks as ch
 from math import copysign
 
 total_perms = sum(rs.perms[i][1] for i in rs.perms)
@@ -140,7 +141,6 @@ async def sum_perms(extra: List[dict],starting: dict={}) -> dict:
         starting.update(i)
     print('Starting type: ',starting,type(starting))
     return starting
-
 
 def perm_get(value: int) -> list:
     """

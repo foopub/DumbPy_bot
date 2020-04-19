@@ -5,14 +5,10 @@ class Music(commands.Cog):
     def __init__(self, client: commands.Bot) -> None:
         self.client = client
 
-    @commands.command(name='music')
-    async def music(self, context: commands.Context):
-        pass
-
     @commands.group()
     async def mu(self, context: commands.Context):
         pass
-    
+
     @mu.command()
     async def play(self, context: commands.Context):
         self.vclient = await context.author.voice.channel.connect()
