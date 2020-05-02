@@ -1,15 +1,16 @@
+import discord
 from discord.ext import commands
 from discord.ext.commands import BadArgument
-import itertools as itt
-import discord
-import functools
-from typing import Callable, List, Union, Optional
+
 from cogs.sup import settings as st
 from cogs.sup import role_settings as rs
-import checks as ch
-from math import copysign
+from cogs.sup import checks as ch
+from cogs.sup.converters import *
 
-total_perms = sum(rs.perms[i][1] for i in rs.perms)
+import functools
+import itertools as itt
+from math import copysign
+from typing import Callable, List, Union, Optional
 
 def role_wrap(    
         _funct=None,
@@ -63,70 +64,6 @@ def role_wrap(
     else:
         return funct_wrapper(_funct)
 
-async def hexoctbin(name: str):
-    d = {'x': 16,'o': 8,'b': 2}
-    return int(name, base=d[name[1]])
-
-class Hex_Oct_Bin(commands.Converter):
-    """
-    Useful converter for alternative number formats.
-    """
-    async def convert(self, context: commands.Context, name: str):
-        try:
-            return await hexoctbin(name)
-        except KeyError or TypeError:
-            raise BadArgument
-
-class Valid_Str(commands.Converter):
-    """
-    Potentially useful, avoid interpreting hex/oct/bin int as str. 
-    """
-    async def convert(self, context: commands.Context, name: str):
-        try:
-            try:
-                await hexoctbin(name)
-                raise BadArgument
-            except KeyError or TypeError:
-                if name.isnumeric() or name[2:-1].isnumeric():
-                    raise BadArgument #exclude discord IDs also 
-        except ValueError:
-            return name
-
-class Permission(commands.Converter):
-    """
-    Check if valid permission hex/oct/bin/int value.
-    """
-    async def convert(self, context: commands.Context, name: str) -> dict:
-        try:
-            try:
-                value = await hexoctbin(name)
-                if value < total_perms:
-                    return dict(iter(discord.Permissions(value)))
-                else:
-                    raise ValueError
-            except:
-                key = abs(int(name))
-                return {f'{rs.perms[key][2]}': int(name)>0}
-        except:
-            raise BadArgument
-
-class Position(commands.Converter):
-    async def convert(self, context: commands.Context, name:str):
-        try:
-            number = int(name)
-            if number < len(context.guild.roles):
-                return number
-            else:
-                print('Position {name} out of range')
-                raise ValueError 
-        except ValueError:
-            role = await discord.utils.get(context.guild.roles, name=name)
-            if role:
-                return role.positive-1
-            else:
-                print(f'Role {name} not found')
-                raise BadArgument
-
 async def chop_list(mylist: list, at: int) -> List[list]:
     bundle = []
     for _ in range(mylist.count(at)):
@@ -135,11 +72,11 @@ async def chop_list(mylist: list, at: int) -> List[list]:
     return bundle
     
 async def sum_perms(extra: List[dict],starting: dict={}) -> dict:
-    print('Starting initial: ', starting,type(starting))
+    #print('Starting initial: ', starting,type(starting))
     for i in extra:
-        print('\ni inside loop: ',i,type(i),'\n')
+        #print('\ni inside loop: ',i,type(i),'\n')
         starting.update(i)
-    print('Starting type: ',starting,type(starting))
+    #print('Starting type: ',starting,type(starting))
     return starting
 
 def perm_get(value: int) -> list:
@@ -420,11 +357,7 @@ class Roles(commands.Cog):
         messagestr = "```\n" + ''.join(message) + "\n```"
         await context.send(messagestr)
 
-    """
-    @commands.command(name='role')
-    async def role(self, context: commands.Context, *args):
-        pass
-    """
+
 def setup(client: commands.Bot) -> None:
     client.add_cog(Roles(client))
     
