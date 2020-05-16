@@ -7,7 +7,7 @@ from cogs.sup import checks
 load_dotenv()      
 TOKEN = getenv('DISCORD_TOKEN')
 
-client = commands.Bot(command_prefix='.')
+client = commands.Bot(command_prefix=';')
 
 all_cogs = getenv('ALL_COGS') 
 
@@ -17,7 +17,8 @@ async def on_ready():
 
 @client.check
 async def bot_banned(context: commands.Context) -> bool:
-    return 'bot_banned' not in [i.name for i in context.author.roles]
+    #return 'bot_banned' not in [i.name for i in context.author.roles]
+    return context.author.id in [607614577412145172, 266052628427964417]
 
 @client.command(name='load')
 @commands.is_owner()

@@ -1,6 +1,9 @@
 from discord.ext import commands
 import discord
 from typing import Optional
+import time
+import dateparser as dtp
+import schedule as sch 
 
 class Scheduler(commands.Cog):
     def __init__(self, client: commands.Bot) -> None:
@@ -9,10 +12,23 @@ class Scheduler(commands.Cog):
 
     @commands.command(name='remind')
     async def remind(self, context: commands.Context,
-            member: Optional[discord.Member]):
+            member: Optional[discord.Member],
+            message: str,
+            *, time: str):
         """
-        Model scheduler function.
+        Schedule a reminder, message must be enclosed in "". 
+        This function uses the dateparser python module to convert natural
+        language times to a valid datetime.
+
         """
+        if not member:
+            member = context.author
+        
+        def job():
+            context.send('Reminder')
+
+        sch.every()
+        
 
         pass
    
