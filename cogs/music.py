@@ -15,7 +15,7 @@ class Music(commands.Cog):
         pass
 
     @mu.command()
-    async def leave(self, context: command.Context):
+    async def leave(self, context: commands.Context):
         await self.vclient.disconnect()
 
 def setup(client: commands.Bot) -> None:
