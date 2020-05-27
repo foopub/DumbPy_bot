@@ -2,19 +2,19 @@ from discord.ext import commands
 import discord
 import cogs.sup.settings as st
 
-
-
 class Reactions(commands.Cog):
     def __init__(self, client: commands.Bot) -> None:
         self.client = client
     
     @commands.Cog.listener()
-    async def on_reaction_add(self, reaction: discord.Reaction, user):
+    async def on_reaction_add(self, reaction: discord.Reaction, 
+            user: discord.Member) -> None:
         """
         Model emoji report function using predefined emojis.
         Message is deleted and sent to a review channel if it contains
         images (embeds or attachments).
         """
+        print(str(reaction))
         if reaction.emoji not in st.reactions:
             return None
         
@@ -27,15 +27,16 @@ class Reactions(commands.Cog):
         else:
             return None
 
-        channel = self.client.get_channel(channel)
-        bundle = []         #create empty list for attachments
-        if attachments:
-            for attachment in attachments:
-                file = await attachment.to_file()
-                bundle.append(file)
-        await channel.send(\
-            f'Message by {reaction.message.author}:\n'
-            f'{reaction.message.content}', files=bundle)
+        if channel:
+            channel = self.client.get_channel(channel)
+            bundle = []         #create empty list for attachments
+            if attachments:
+                for attachment in attachments:
+                    file = await attachment.to_file()
+                    bundle.append(file)
+            await channel.send(\
+                f'Message by {reaction.message.author}:\n'
+                f'{reaction.message.content}', files=bundle)
 
         if emoji[1]:
             await reaction.message.delete()

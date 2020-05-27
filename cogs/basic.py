@@ -5,10 +5,12 @@ import itertools as itt
 from datetime import datetime, timedelta
 import pyparsing as pp
 from discord.errors import Forbidden
+import random 
 
 async def webhooksay(message: discord.Message, 
         channel: discord.TextChannel,
-        content: Optional[str]=None) -> None:
+        content: Optional[str]=None,
+        delete: bool=False) -> None:
     """
     Quotes a message using a webhook.
     """
@@ -20,12 +22,14 @@ async def webhooksay(message: discord.Message,
     for att in atts:
         file = await att.to_file()
         bundle.append(file)
-    message = {'content': content,
+    wmessage = {'content': content,
             'files': bundle,
             'avatar_url': message.author.avatar_url,
             'username': str(message.author)}
 
-    await webhooks[0].send(**message)
+    await webhooks[0].send(**wmessage)
+    if delete:
+        await message.delete()
 
 attrs = discord.Message.__slots__
 flag = pp.Word('-') + pp.Word(pp.alphas, max=1)
@@ -58,7 +62,18 @@ class Basic(commands.Cog):
         if channel is None:
             channel = context.channel
         
-        await webhooksay(context.message,channel,content)
+        await webhooksay(context.message,channel,content,True)
+
+    @commands.command(name='sarcasm',aliases=['s'])
+    async def sarcasm(self, context: commands.Context,
+            *, message: str) -> None:
+        """
+        Say something sarcastically.
+        """
+        channel = context.channel 
+        message = ''.join([i.upper() if random.choice([0,1])\
+                else i.lower() for i in list(message)])
+        await webhooksay(context.message,channel,message,True)
 
     @commands.command(name='quote')
     async def quote(self, context: commands.Context,
@@ -115,7 +130,7 @@ class Basic(commands.Cog):
                 log += str(channel)
                 deleted = await channel.purge(
                         after = date,
-                        limit = 1000,
+                        limit = None,
                         check = options)
                 print(len(deleted))
             except Forbidden:
@@ -123,21 +138,6 @@ class Basic(commands.Cog):
         print(log)
         if failled and "-v" in flags:
             await context.send(f"Missing access for: {', '.join(failled)}")
-    """
-    @commands.command(name='harakiri')
-    async def harakiri(self, context: commands.Context):
-    """
-        #Delete messages using the delete_messages method.
-    """
-        messages_list = await context.channel.history().flatten()
-        print(len(messages_list))
-        messages_iter = iter(messages_list)
-        count = 0
-        while messages := list(itt.islice(messages_iter,100)):
-            count += 1
-            if count == 5:
-                break
-    """
 
 def setup(client: commands.Bot) -> None:
     client.add_cog(Basic(client))
