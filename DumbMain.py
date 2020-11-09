@@ -3,6 +3,7 @@ from discord.ext import commands
 from dotenv import load_dotenv      
 import discord
 from cogs.sup import checks
+from aioconsole import ainput
       
 load_dotenv()      
 TOKEN = getenv('DISCORD_TOKEN')
@@ -14,6 +15,7 @@ all_cogs = getenv('ALL_COGS')
 @client.event      
 async def on_ready():      
     print(f'{client.user} connected!') 
+
 
 @client.check
 async def bot_banned(context: commands.Context) -> bool:
@@ -68,7 +70,12 @@ async def reload(context: commands.Context, *, names: str) -> None:
     if names.lower() == 'all': names = all_cogs
     for name in names.split(' '):
         try:
-            client.unload_extension(f'cogs.{name.lower()}')
+            try:
+                client.unload_extension(f'cogs.{name.lower()}')
+                context.send(f'Module {name.title()} unloaded!')
+            except:
+                context.send(f'Module {name.title()} not loaded!')
+                continue
             client.load_extension(f'cogs.{name.lower()}')
             await context.send(f'Module {name.title()} reloaded!')
         except:

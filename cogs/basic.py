@@ -107,7 +107,7 @@ class Basic(commands.Cog):
         if not member:
             member = context.author
 
-        print(opts,'123')
+        #print(opts,'123')
 
         log = ""
         def options(message: discord.Message) -> bool:
@@ -132,10 +132,10 @@ class Basic(commands.Cog):
                         after = date,
                         limit = None,
                         check = options)
-                print(len(deleted))
+                #print(len(deleted))
             except Forbidden:
                 failled.append(str(channel))
-        print(log)
+        #print(log)
         if failled and "-v" in flags:
             await context.send(f"Missing access for: {', '.join(failled)}")
 

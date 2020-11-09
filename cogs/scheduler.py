@@ -47,7 +47,7 @@ class Scheduler(commands.Cog):
 
     @tasks.loop(seconds=5)
     async def mainloop(self):
-        print(self.count)
+        #print(self.count)
         self.count += 1
         await self.schedule.arun()
     

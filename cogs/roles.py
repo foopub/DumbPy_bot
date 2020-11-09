@@ -115,7 +115,9 @@ class Roles(commands.Cog):
         try:
             colour_role = await context.guild.create_role(
                     name=role_name, 
-                    colour=colour
+                    colour=colour,
+                    #these are the default permissions
+                    permissions=discord.Permissions(104324673)
                     )
         except ValueError:
             await context.send(f"{colour} isn't a valid hex, silly!")
