@@ -3,6 +3,7 @@ from discord.ext import commands
 from dotenv import load_dotenv      
 import discord
 from cogs.sup import checks
+from cogs.sup import settings
 from aioconsole import ainput
       
 load_dotenv()      
@@ -18,9 +19,9 @@ async def on_ready():
 
 
 @client.check
-async def bot_banned(context: commands.Context) -> bool:
+async def bot_allowed(context: commands.Context) -> bool:
     #return 'bot_banned' not in [i.name for i in context.author.roles]
-    return context.author.id in [607614577412145172, 266052628427964417]
+    return context.author.id in settings.bot_allowed
 
 @client.command(name='load')
 @commands.is_owner()
